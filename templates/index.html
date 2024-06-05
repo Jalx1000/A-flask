@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Importar y procesar Excel</title>
+  </head>
+  <body style="margin: auto; text-align: center">
+    <h1>Importar y procesar Excel</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <label for="excelFile">Selecciona un archivo Excel:</label>
+      <input
+        type="file"
+        id="excelFile"
+        name="file"
+        accept=".xlsx"
+      /><br /><br />
+
+      <label>Selecciona las columnas para las cabeceras predefinidas:</label
+      ><br />
+      {% for header in headers %}
+      <label for="{{ header }}">{{ header }}:</label>
+      <select id="{{ header }}" name="{{ header }}">
+        <option value="">Selecciona una columna</option></select
+      ><br />
+      {% endfor %}
+
+      <button type="submit">Procesar</button>
+    </form>
+
+    <div id="result"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+
+    <script>
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          var formData = new FormData(this);
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", "/process", true);
+          xhr.responseType = "blob";
+
+          xhr.onload = function () {
+            if (xhr.status === 200) {
+              var blob = xhr.response;
+              var url = window.URL.createObjectURL(blob);
+              var a = document.createElement("a");
+              a.href = url;
+              a.download = "processed_file.xlsx";
+              document.body.appendChild(a);
+              a.click();
+              document.getElementById("result").innerHTML =
+                "Archivo procesado y descargado.";
+            } else {
+              document.getElementById("result").innerHTML =
+                "Error al procesar el archivo.";
+            }
+          };
+
+          xhr.send(formData);
+        });
+
+      // Obtener las columnas disponibles cuando se seleccione un archivo
+      document
+        .getElementById("excelFile")
+        .addEventListener("change", function (event) {
+          var file = event.target.files[0];
+          if (!file) return;
+
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, { type: "array" });
+            var firstSheetName = workbook.SheetNames[0];
+            var worksheet = workbook.Sheets[firstSheetName];
+            var headers = [];
+            for (var cell in worksheet) {
+              if (cell[1] === "1") {
+                headers.push(worksheet[cell].v);
+              } else {
+                break;
+              }
+            }
+
+            // Llenar las opciones de selección con las columnas disponibles
+            headers.forEach(function (header) {
+              if (document.getElementById(header) !== null) {
+                var selectElement = document.getElementById(header);
+                selectElement.innerHTML =
+                  '<option value="">Selecciona una columna</option>';
+                headers.forEach(function (column) {
+                  selectElement.innerHTML +=
+                    '<option value="' + column + '">' + column + "</option>";
+                }
+                
+                );
+              }
+            });
+          };
+          reader.readAsArrayBuffer(file);
+        });
+    </script>
+  </body>
+</html>
